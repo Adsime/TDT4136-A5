@@ -15,6 +15,10 @@ class CSP:
         # the variable pair (i, j)
         self.constraints = {}
 
+        self.backtrack_fails = 0
+
+        self.backtrack_calls = 0
+
     def add_variable(self, name, domain):
         """Add a new variable to the CSP. 'name' is the variable name
         and 'domain' is a list of the legal values for the variable.
@@ -109,8 +113,46 @@ class CSP:
         assignments and inferences that took place in previous
         iterations of the loop.
         """
-        # TODO: IMPLEMENT THIS
-        pass
+        # Test to see if the assignment is done.
+        self.backtrack_calls += 1
+        if self.finished(assignment):
+            return assignment
+
+        # Get the next node which is not finished
+        key = self.select_unassigned_variable(assignment)
+
+        # Iterate over every value value in the list the given key maps to,
+        for value in assignment[key]:
+            # Generates a deep copy of the given assignment
+            copiedAssignment = copy.deepcopy(assignment)
+
+            # In order to test for 'value', the value of the given key is changed to represent a list
+            # containing only 'value'.
+            copiedAssignment[key] = [value]
+
+            # An inference check is made to see if any values can be placed given the new information.
+            if self.inference(copiedAssignment, self.get_all_arcs()):
+                # If changes were made, a recursive call is made to continue the build of the copied assignment.
+                result = self.backtrack(copiedAssignment)
+                if result:
+                    return result
+        self.backtrack_fails += 1
+        return False
+
+    def finished(self, assignment):
+        """
+        Helper function to check the status of an assignment. If the the given values in the assignment
+        are of size 1, the assignment is considered finished.
+        """
+        # Always assuming the assignment to be finished
+        done = True
+        for item in assignment.itervalues():
+            # Test to see if the value set is larger than 1. If so, the loop is broken and
+            # false is returned, indicating the assignment is not finished.
+            if len(item) > 1:
+                done = False
+                break
+        return done
 
     def select_unassigned_variable(self, assignment):
         """The function 'Select-Unassigned-Variable' from the pseudocode
@@ -118,8 +160,12 @@ class CSP:
         in 'assignment' that have not yet been decided, i.e. whose list
         of legal values has a length greater than one.
         """
-        # TODO: IMPLEMENT THIS
-        pass
+        # Iterate through the keys in the given assignment.
+        for key in assignment.keys():
+            # return the first key where the value set is larger than 1
+            if len(assignment[key]) > 1:
+                return key
+        return None
 
     def inference(self, assignment, queue):
         """The function 'AC-3' from the pseudocode in the textbook.
@@ -127,8 +173,20 @@ class CSP:
         the lists of legal values for each undecided variable. 'queue'
         is the initial queue of arcs that should be visited.
         """
-        # TODO: IMPLEMENT THIS
-        pass
+        # Iterate through the queue of arcs.
+        while queue:
+            # Split the arc into its individual components, key and value
+            x, y = queue.pop()
+            # Tries to revise the given node checking if an update can be made
+            if self.revise(assignment, x, y):
+                # If there are no legal values, false is returned to indicate a bad path
+                if len(assignment[x]) == 0:
+                    return False
+                # Iterate through all neighbouring arcs, adding them to the queue of arcs which should be visited.
+                for neighbour in self.get_all_neighboring_arcs(x):
+                    # Adds the neighbour to the queue
+                    queue.append(neighbour)
+        return True
 
     def revise(self, assignment, i, j):
         """The function 'Revise' from the pseudocode in the textbook.
@@ -139,8 +197,24 @@ class CSP:
         between i and j, the value should be deleted from i's list of
         legal values in 'assignment'.
         """
-        # TODO: IMPLEMENT THIS
-        pass
+        revised = False
+        # Iterate over every legal value in the domain of i
+        for x in assignment[i]:
+            found = False
+            # Iterate over every legal value in the domain of j
+            for y in assignment[j]:
+                # Check to see if a legal value pair can be found in the constrains.
+                # If a value pair is considered legal, the loop is stopped and 'found' is set to true.
+                if (x, y) in self.constraints[i][j]:
+                    found = True
+                    break
+            # If no legal value pair is found, the value x is removed from the domain of i
+            if not found:
+                # Remove x from domain of i
+                assignment[i].remove(x)
+                # Revised set to true indicating a change in the domain of i for the parent method.
+                revised = True
+        return revised
 
 def create_map_coloring_csp():
     """Instantiate a CSP representing the map coloring problem from the
